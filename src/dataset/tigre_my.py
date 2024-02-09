@@ -1,10 +1,8 @@
 import torch
 import pickle
-import os
-import sys
 import numpy as np
 
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 
 class ConeGeometry(object):
@@ -51,12 +49,17 @@ class TIGREDatasetMy(Dataset):
 
         self.type = type
         self.n_rays = n_rays
-        self.near, self.far = self.get_near_far(self.geo)
-    
+
+
         # if type == "train":
         self.projs = torch.tensor(proj_data, dtype=torch.float32, device=device)
         rays = self.get_rays(ks, self.geo, device)
-        self.rays = torch.cat([rays, torch.ones_like(rays[...,:1])*self.near, torch.ones_like(rays[...,:1])*self.far], dim=-1)
+
+        self.rays = []
+        for i in range(len(ks)):
+            near, far = self.get_near_far(i, self.geo)
+            self.rays.append(torch.cat([rays, torch.ones_like(rays[...,:1])*near, torch.ones_like(rays[...,:1])*far], dim=-1))
+
         self.n_samples = len(ks)
         coords = torch.stack(torch.meshgrid(torch.linspace(0, self.geo.nDetector[1] - 1, self.geo.nDetector[1], device=device),
                                             torch.linspace(0, self.geo.nDetector[0] - 1, self.geo.nDetector[0], device=device), indexing="ij"),
@@ -82,7 +85,7 @@ class TIGREDatasetMy(Dataset):
         coords_valid = self.coords[projs_valid]
         select_inds = np.random.choice(coords_valid.shape[0], size=[self.n_rays], replace=False)
         select_coords = coords_valid[select_inds].long()
-        rays = self.rays[index, select_coords[:, 0], select_coords[:, 1]]
+        rays = self.rays[index][index, select_coords[:, 0], select_coords[:, 1]]
         projs = self.projs[index, select_coords[:, 0], select_coords[:, 1]]
         out = {
             "projs":projs,
@@ -119,25 +122,26 @@ class TIGREDatasetMy(Dataset):
         DSD = geo.DSD
         rays = []
 
-        for k in ks:
+        for ind, k in enumerate(ks):
+            offDetector = geo.offDetector[ind]
             pose = torch.Tensor(k).to(device)
             rays_o, rays_d = None, None
             if geo.mode == "cone":
                 i, j = torch.meshgrid(torch.linspace(0, W - 1, W, device=device),
                                     torch.linspace(0, H - 1, H, device=device), indexing="ij")  # pytorch"s meshgrid has indexing="ij"
-                uu = (i.t() + 0.5 - W / 2) * geo.dDetector[0] + geo.offDetector[0]
-                vv = (j.t() + 0.5 - H / 2) * geo.dDetector[1] + geo.offDetector[1]
+                uu = (i.t() + 0.5 - W / 2) * geo.dDetector[0] + offDetector[0]
+                vv = (j.t() + 0.5 - H / 2) * geo.dDetector[1] + offDetector[1]
                 dirs = torch.stack([uu / DSD, vv / DSD, torch.ones_like(uu)], -1)
                 rays_d = torch.sum(torch.matmul(pose[:3,:3], dirs[..., None]).to(device), -1) # pose[:3, :3] * 
                 rays_o = pose[:3, -1].expand(rays_d.shape)
-            elif geo.mode == "parallel":
-                i, j = torch.meshgrid(torch.linspace(0, W - 1, W, device=device),
-                                        torch.linspace(0, H - 1, H, device=device), indexing="ij")  # pytorch"s meshgrid has indexing="ij"
-                uu = (i.t() + 0.5 - W / 2) * geo.dDetector[0] + geo.offDetector[0]
-                vv = (j.t() + 0.5 - H / 2) * geo.dDetector[1] + geo.offDetector[1]
-                dirs = torch.stack([torch.zeros_like(uu), torch.zeros_like(uu), torch.ones_like(uu)], -1)
-                rays_d = torch.sum(torch.matmul(pose[:3,:3], dirs[..., None]).to(device), -1) # pose[:3, :3] * 
-                rays_o = torch.sum(torch.matmul(pose[:3,:3], torch.stack([uu,vv,torch.zeros_like(uu)],-1)[..., None]).to(device), -1) + pose[:3, -1].expand(rays_d.shape)
+            # elif geo.mode == "parallel":
+            #     i, j = torch.meshgrid(torch.linspace(0, W - 1, W, device=device),
+            #                             torch.linspace(0, H - 1, H, device=device), indexing="ij")  # pytorch"s meshgrid has indexing="ij"
+            #     uu = (i.t() + 0.5 - W / 2) * geo.dDetector[0] + geo.offDetector[0]
+            #     vv = (j.t() + 0.5 - H / 2) * geo.dDetector[1] + geo.offDetector[1]
+            #     dirs = torch.stack([torch.zeros_like(uu), torch.zeros_like(uu), torch.ones_like(uu)], -1)
+            #     rays_d = torch.sum(torch.matmul(pose[:3,:3], dirs[..., None]).to(device), -1) # pose[:3, :3] *
+            #     rays_o = torch.sum(torch.matmul(pose[:3,:3], torch.stack([uu,vv,torch.zeros_like(uu)],-1)[..., None]).to(device), -1) + pose[:3, -1].expand(rays_d.shape)
 
                 # import open3d as o3d
                 # from src.util.draw_util import plot_rays, plot_cube, plot_camera_pose
@@ -147,8 +151,8 @@ class TIGREDatasetMy(Dataset):
                 # poseray = plot_camera_pose(pose.cpu().detach().numpy())
                 # o3d.visualization.draw_geometries([cube1, cube2, rays1, poseray])
             
-            else:
-                raise NotImplementedError("Unknown CT scanner type!")
+            # else:
+            #     raise NotImplementedError("Unknown CT scanner type!")
             rays.append(torch.concat([rays_o, rays_d], dim=-1))
 
         return torch.stack(rays, dim=0)
@@ -172,15 +176,17 @@ class TIGREDatasetMy(Dataset):
         T[:-1, -1] = trans
         return T
 
-    def get_near_far(self, geo: ConeGeometry, tolerance=0.005):
+    def get_near_far(self, ind: int, geo: ConeGeometry, tolerance=0.005):
         """
         Compute the near and far threshold.
         """
-        dist1 = np.linalg.norm([geo.offOrigin[0] - geo.sVoxel[0] / 2, geo.offOrigin[1] - geo.sVoxel[1] / 2])
-        dist2 = np.linalg.norm([geo.offOrigin[0] - geo.sVoxel[0] / 2, geo.offOrigin[1] + geo.sVoxel[1] / 2])
-        dist3 = np.linalg.norm([geo.offOrigin[0] + geo.sVoxel[0] / 2, geo.offOrigin[1] - geo.sVoxel[1] / 2])
-        dist4 = np.linalg.norm([geo.offOrigin[0] + geo.sVoxel[0] / 2, geo.offOrigin[1] + geo.sVoxel[1] / 2])
+        DSO = geo.DSO[ind]
+        offOrigin = geo.offOrigin[ind]
+        dist1 = np.linalg.norm([offOrigin[0] - geo.sVoxel[0] / 2, offOrigin[1] - geo.sVoxel[1] / 2])
+        dist2 = np.linalg.norm([offOrigin[0] - geo.sVoxel[0] / 2, offOrigin[1] + geo.sVoxel[1] / 2])
+        dist3 = np.linalg.norm([offOrigin[0] + geo.sVoxel[0] / 2, offOrigin[1] - geo.sVoxel[1] / 2])
+        dist4 = np.linalg.norm([offOrigin[0] + geo.sVoxel[0] / 2, offOrigin[1] + geo.sVoxel[1] / 2])
         dist_max = np.max([dist1, dist2, dist3, dist4])
-        near = np.max([0, geo.DSO - dist_max - tolerance])
-        far = np.min([geo.DSO * 2, geo.DSO + dist_max + tolerance])
+        near = np.max([0, DSO - dist_max - tolerance])
+        far = np.min([DSO * 2, DSO + dist_max + tolerance])
         return near, far

@@ -56,7 +56,7 @@ class BasicTrainer(Trainer):
         # Evaluate projection
         select_ind = np.random.choice(len(self.eval_dset))
         projs = self.eval_dset.projs[select_ind]
-        rays = self.eval_dset.rays[select_ind].reshape(-1, 8)
+        rays = self.eval_dset.rays[select_ind][select_ind].reshape(-1, 8)
         H, W = projs.shape
         projs_pred = []
         for i in range(0, rays.shape[0], self.n_rays):
