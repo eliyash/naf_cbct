@@ -7,7 +7,8 @@ from tqdm import tqdm, trange
 from shutil import copyfile
 import numpy as np
 
-from .dataset import TIGREDataset as Dataset
+# from .dataset import TIGREDataset as Dataset
+from .dataset.tigre_my import TIGREDatasetMy as Dataset
 from .network import get_network
 from .encoder import get_encoder
 
