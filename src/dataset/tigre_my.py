@@ -44,7 +44,7 @@ class TIGREDatasetMy(Dataset):
     def __init__(self, path, n_rays=1024, type="train", device="cuda"):    
         super().__init__()
 
-        with open(path + '_real', "rb") as handle:
+        with open(path, "rb") as handle:
             ks, proj_geom, proj_data = pickle.load(handle)
 
         self.geo = ConeGeometry(proj_geom)
