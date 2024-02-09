@@ -55,10 +55,10 @@ class TIGREDatasetMy(Dataset):
         self.projs = torch.tensor(proj_data, dtype=torch.float32, device=device)
         rays = self.get_rays(ks, self.geo, device)
 
-        self.rays = []
-        for i in range(len(ks)):
-            near, far = self.get_near_far(i, self.geo)
-            self.rays.append(torch.cat([rays, torch.ones_like(rays[...,:1])*near, torch.ones_like(rays[...,:1])*far], dim=-1))
+        # self.rays = []
+        # for i in range(len(ks)):
+        near, far = self.get_near_far(len(ks) // 2, self.geo)
+        self.rays = torch.cat([rays, torch.ones_like(rays[...,:1])*near, torch.ones_like(rays[...,:1])*far], dim=-1)
 
         self.n_samples = len(ks)
         coords = torch.stack(torch.meshgrid(torch.linspace(0, self.geo.nDetector[1] - 1, self.geo.nDetector[1], device=device),
@@ -85,7 +85,7 @@ class TIGREDatasetMy(Dataset):
         coords_valid = self.coords[projs_valid]
         select_inds = np.random.choice(coords_valid.shape[0], size=[self.n_rays], replace=False)
         select_coords = coords_valid[select_inds].long()
-        rays = self.rays[index][index, select_coords[:, 0], select_coords[:, 1]]
+        rays = self.rays[index, select_coords[:, 0], select_coords[:, 1]]
         projs = self.projs[index, select_coords[:, 0], select_coords[:, 1]]
         out = {
             "projs":projs,
