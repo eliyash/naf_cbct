@@ -86,7 +86,9 @@ class TIGREDatasetMy(Dataset):
         select_inds = np.random.choice(coords_valid.shape[0], size=[self.n_rays], replace=False)
         select_coords = coords_valid[select_inds].long()
         rays = self.rays[index, select_coords[:, 0], select_coords[:, 1]]
+        print('\n\n\n\n')
         print(self.projs.shape, index, select_coords[:, 0], select_coords[:, 1])
+        print('\n\n\n\n')
         projs = self.projs[index, select_coords[:, 0], select_coords[:, 1]]
         out = {
             "projs":projs,
