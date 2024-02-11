@@ -22,7 +22,7 @@
 
 // requires CUDA >= 10 and ARCH >= 70
 // this is very slow compared to float or __half2, do not use!
-static inline  __device__ at::Half myAtomicAdd(at::Half *address, at::Half val) {
+static inline  __device__ c10::Half myAtomicAdd(c10::Half *address, c10::Half val) {
   return myAtomicAdd(reinterpret_cast<__half*>(address), val);
 }
 
@@ -254,7 +254,7 @@ __global__ void kernel_grid_backward(
 
         // myAtomicAdd for __half is slow (especially for large values), so we use __half2 if N_C % 2 == 0
         // TODO: use float which is better than __half, if N_C % 2 != 0
-        if (std::is_same<scalar_t, at::Half>::value && N_C % 2 == 0) {
+        if (std::is_same<scalar_t, c10::Half>::value && N_C % 2 == 0) {
             #pragma unroll
             for (uint32_t c = 0; c < N_C; c += 2) {
                 // process two __half at once (by interpreting as a __half2)
