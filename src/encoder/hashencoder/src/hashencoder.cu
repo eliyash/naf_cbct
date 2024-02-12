@@ -22,7 +22,7 @@
 
 // requires CUDA >= 10 and ARCH >= 70
 // this is very slow compared to float or __half2, do not use!
-static inline  __device__ c10::Half myAtomicAdd(c10::Half *address, c10::Half val) {
+static inline  __device__ at::Half myAtomicAdd(at::Half *address, at::Half val) {
   return myAtomicAdd(reinterpret_cast<__half*>(address), val);
 }
 
@@ -76,20 +76,20 @@ __device__ uint32_t get_grid_index(const uint32_t ch, const uint32_t hashmap_siz
 
 template <typename scalar_t, uint32_t D, uint32_t C>
 __global__ void kernel_grid(
-    const scalar_t * __restrict__ inputs, 
-    const scalar_t * __restrict__ grid, 
-    const int * __restrict__ offsets, 
-    scalar_t * __restrict__ outputs, 
+    const scalar_t * __restrict__ inputs,
+    const scalar_t * __restrict__ grid,
+    const int * __restrict__ offsets,
+    scalar_t * __restrict__ outputs,
     uint32_t B, uint32_t L, uint32_t H,
-    const bool calc_grad_inputs, 
+    const bool calc_grad_inputs,
     scalar_t * __restrict__ dy_dx
 ) {
     const uint32_t b = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (b >= B) return;
 
     const uint32_t level = blockIdx.y;
-    
+
     // locate
     grid += (uint32_t)offsets[level] * C;
     inputs += b * D;
@@ -98,7 +98,7 @@ __global__ void kernel_grid(
     const uint32_t hashmap_size = offsets[level + 1] - offsets[level];
     const float scale = exp2f(level) * H - 1.0f;
     const uint32_t resolution = (uint32_t)ceil(scale) + 1;
-    
+
     // calculate coordinate
     float pos[D];
     uint32_t pos_grid[D];
@@ -140,12 +140,12 @@ __global__ void kernel_grid(
         }
 
         //printf("[b=%d, l=%d] int %d, idx %d, w %f, val %f\n", b, level, idx, index, w, grid[index]);
-    }    
+    }
 
     // writing to global memory (slow)
     #pragma unroll
     for (uint32_t ch = 0; ch < C; ch++) {
-        outputs[ch] = results[ch]; 
+        outputs[ch] = results[ch];
     }
 
     // prepare dy_dx for calc_grad_inputs
@@ -201,10 +201,10 @@ __global__ void kernel_grid(
 template <typename scalar_t, uint32_t D, uint32_t C, uint32_t N_C>
 __global__ void kernel_grid_backward(
     const scalar_t * __restrict__ grad,
-    const scalar_t * __restrict__ inputs, 
-    const scalar_t * __restrict__ grid, 
-    const int * __restrict__ offsets, 
-    scalar_t * __restrict__ grad_grid, 
+    const scalar_t * __restrict__ inputs,
+    const scalar_t * __restrict__ grid,
+    const int * __restrict__ offsets,
+    scalar_t * __restrict__ grad_grid,
     uint32_t B, uint32_t L, uint32_t H
 ) {
     const uint32_t b = (blockIdx.x * blockDim.x + threadIdx.x) * N_C / C;
@@ -254,7 +254,7 @@ __global__ void kernel_grid_backward(
 
         // myAtomicAdd for __half is slow (especially for large values), so we use __half2 if N_C % 2 == 0
         // TODO: use float which is better than __half, if N_C % 2 != 0
-        if (std::is_same<scalar_t, c10::Half>::value && N_C % 2 == 0) {
+        if (std::is_same<scalar_t, at::Half>::value && N_C % 2 == 0) {
             #pragma unroll
             for (uint32_t c = 0; c < N_C; c += 2) {
                 // process two __half at once (by interpreting as a __half2)
