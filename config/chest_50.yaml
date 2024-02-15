@@ -32,5 +32,5 @@ train:
   lrate_step: 1500
   resume: False
 log:
-  i_eval: 250  # Epoch for evaluation
-  i_save: 500  # Epoch for saving
+  i_eval: 50  # Epoch for evaluation
+  i_save: 100  # Epoch for saving
