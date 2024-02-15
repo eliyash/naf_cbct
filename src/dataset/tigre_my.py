@@ -44,6 +44,7 @@ class TIGREDatasetMy(Dataset):
 
         with open(path, "rb") as handle:
             ks, proj_geom, proj_data = pickle.load(handle)
+        proj_data = proj_data.astype(float) / 4000
 
         self.geo = ConeGeometry(proj_geom)
 
