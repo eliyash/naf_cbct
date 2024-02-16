@@ -16,7 +16,7 @@ class ConeGeometry(object):
         self.DSD = data["DSD"]/1000 # Distance Source Detector      (m)
         self.DSO = data["DSO"]/1000  # Distance Source Origin        (m)
         # Detector parameters
-        self.nDetector = np.array(data["nDetector"])  # number of pixels              (px)
+        self.nDetector = np.flipud(np.array(data["nDetector"]))   # number of pixels              (px)
         self.dDetector = np.array(data["dDetector"])/1000  # size of each pixel            (m)
         self.sDetector = self.nDetector * self.dDetector  # total size of the detector    (m)
         # Image parameters
@@ -92,7 +92,7 @@ class TIGREDatasetMy(Dataset):
         # print(select_coords[:, 0].min(), select_coords[:, 0].max())
         # print(select_coords[:, 1].min(), select_coords[:, 1].max())
         # print('\n\n\n\n')
-        projs = self.projs[index, select_coords[:, 1], select_coords[:, 0]]
+        projs = self.projs[index, select_coords[:, 0], select_coords[:, 1]]
         out = {
             "projs":projs,
             "rays":rays,
@@ -140,25 +140,7 @@ class TIGREDatasetMy(Dataset):
                 dirs = torch.stack([uu / DSD, vv / DSD, torch.ones_like(uu)], -1)
                 rays_d = torch.sum(torch.matmul(pose[:3,:3], dirs[..., None]).to(device), -1) # pose[:3, :3] * 
                 rays_o = pose[:3, -1].expand(rays_d.shape)
-            # elif geo.mode == "parallel":
-            #     i, j = torch.meshgrid(torch.linspace(0, W - 1, W, device=device),
-            #                             torch.linspace(0, H - 1, H, device=device), indexing="ij")  # pytorch"s meshgrid has indexing="ij"
-            #     uu = (i.t() + 0.5 - W / 2) * geo.dDetector[0] + geo.offDetector[0]
-            #     vv = (j.t() + 0.5 - H / 2) * geo.dDetector[1] + geo.offDetector[1]
-            #     dirs = torch.stack([torch.zeros_like(uu), torch.zeros_like(uu), torch.ones_like(uu)], -1)
-            #     rays_d = torch.sum(torch.matmul(pose[:3,:3], dirs[..., None]).to(device), -1) # pose[:3, :3] *
-            #     rays_o = torch.sum(torch.matmul(pose[:3,:3], torch.stack([uu,vv,torch.zeros_like(uu)],-1)[..., None]).to(device), -1) + pose[:3, -1].expand(rays_d.shape)
 
-                # import open3d as o3d
-                # from src.util.draw_util import plot_rays, plot_cube, plot_camera_pose
-                # cube1 = plot_cube(np.zeros((3,1)), geo.sVoxel[...,np.newaxis])
-                # cube2 = plot_cube(np.zeros((3,1)), np.ones((3,1))*geo.DSO*2)
-                # rays1 = plot_rays(rays_d.cpu().detach().numpy(), rays_o.cpu().detach().numpy(), 2)
-                # poseray = plot_camera_pose(pose.cpu().detach().numpy())
-                # o3d.visualization.draw_geometries([cube1, cube2, rays1, poseray])
-            
-            # else:
-            #     raise NotImplementedError("Unknown CT scanner type!")
             rays.append(torch.concat([rays_o, rays_d], dim=-1))
 
         return torch.stack(rays, dim=0)
