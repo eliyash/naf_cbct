@@ -1,7 +1,8 @@
 exp:
   expname: chest_50
   expdir: ./logs/real/
-  datadir: ./data/real_case_params.pickle
+#  datadir: ./data/real_case_params.pickle
+  datadir: ./data/real_case_params_angle2pose.pickle
 network:
   net_type: mlp
   num_layers: 4
