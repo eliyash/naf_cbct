@@ -16,12 +16,16 @@ def config_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="./config/abdomen_50.yaml",
                         help="configs file path")
+    parser.add_argument("--datadir", default=None)
     return parser
 
 parser = config_parser()
 args = parser.parse_args()
 
 cfg = load_config(args.config)
+
+if args.datadir is not None:
+    cfg.datadir = args.datadir
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
