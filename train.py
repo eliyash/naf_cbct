@@ -1,5 +1,9 @@
+import datetime
 import os
 import os.path as osp
+from datetime import time
+from pathlib import Path
+
 import torch
 import imageio.v2 as iio
 import numpy as np
@@ -26,6 +30,7 @@ cfg = load_config(args.config)
 
 if args.datadir is not None:
     cfg['exp']['datadir'] = args.datadir
+cfg['exp']['expdir'] = f'./logs/{Path(args.datadir).stem.split(".")[0]}__{datetime.datetime.now().strftime("%d_%H-%M-%S")}'
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
