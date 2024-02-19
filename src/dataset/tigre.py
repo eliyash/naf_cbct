@@ -1,10 +1,8 @@
 import torch
 import pickle
-import os
-import sys
 import numpy as np
 
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 
 class ConeGeometry(object):

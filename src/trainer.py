@@ -1,20 +1,20 @@
 import os
 import os.path as osp
 import json
+from typing import Callable
+
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
 from shutil import copyfile
 import numpy as np
 
-# from .dataset import TIGREDataset as Dataset
-from .dataset.tigre_my import TIGREDatasetMy as Dataset
 from .network import get_network
 from .encoder import get_encoder
 
 
 class Trainer:
-    def __init__(self, cfg, device="cuda"):
+    def __init__(self, dataset_class: Callable, cfg, device="cuda"):
 
         # Args
         self.global_step = 0
@@ -34,8 +34,8 @@ class Trainer:
         os.makedirs(self.evaldir, exist_ok=True)
 
         # Dataset
-        train_dset = Dataset(cfg["exp"]["datadir"], cfg["train"]["n_rays"], "train", device)
-        self.eval_dset = Dataset(cfg["exp"]["datadir"], cfg["train"]["n_rays"], "val", device) if self.i_eval > 0 else None
+        train_dset = dataset_class(cfg["exp"]["datadir"], cfg["train"]["n_rays"], "train", device)
+        self.eval_dset = dataset_class(cfg["exp"]["datadir"], cfg["train"]["n_rays"], "val", device) if self.i_eval > 0 else None
         self.train_dloader = torch.utils.data.DataLoader(train_dset, batch_size=cfg["train"]["n_batch"])
         self.voxels = self.eval_dset.voxels if self.i_eval > 0 else None
     

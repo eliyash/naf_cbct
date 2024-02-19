@@ -1,7 +1,6 @@
 import datetime
 import os
 import os.path as osp
-from datetime import time
 from pathlib import Path
 
 import torch
@@ -18,9 +17,9 @@ from src.utils import get_psnr, get_mse, get_psnr_3d, get_ssim_3d, cast_to_image
 
 def config_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="./config/abdomen_50.yaml",
-                        help="configs file path")
+    parser.add_argument("--config", default="./config/chest_50.yaml", help="configs file path")
     parser.add_argument("--datadir", default=None)
+    parser.add_argument('--use_orig_dataset', default=False, action='store_true')
     return parser
 
 parser = config_parser()
@@ -28,9 +27,18 @@ args = parser.parse_args()
 
 cfg = load_config(args.config)
 
+if args.use_orig_dataset:
+    from src.dataset import TIGREDataset
+    dataset_class = TIGREDataset
+else:
+    from src.dataset.tigre_my import TIGREDatasetMy
+    dataset_class = TIGREDatasetMy
+
+print(f"Using dataset: {dataset_class}")
+
 if args.datadir is not None:
     cfg['exp']['datadir'] = args.datadir
-cfg['exp']['expdir'] = f'./logs/{Path(args.datadir).stem.split(".")[0]}__{datetime.datetime.now().strftime("%d_%H-%M-%S")}'
+    cfg['exp']['expdir'] = f'./logs/{Path(args.datadir).stem}__{datetime.datetime.now().strftime("%d_%H-%M-%S")}'
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -40,7 +48,7 @@ class BasicTrainer(Trainer):
         """
         Basic network trainer.
         """
-        super().__init__(cfg, device)
+        super().__init__(dataset_class, cfg, device)
         print(f"[Start] exp: {cfg['exp']['expname']}, net: Basic network")
 
     def compute_loss(self, data, global_step, idx_epoch):
