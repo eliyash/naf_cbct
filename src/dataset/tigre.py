@@ -169,7 +169,7 @@ class TIGREDataset(Dataset):
         # Combined rotation matrix
         R = np.dot(np.dot(Rz, Ry), Rx)
 
-        trans_camera = np.array([0, 0, DSO])
+        trans_camera = np.array([DSO, 0, 0])
         trans = np.dot(R, trans_camera)
         # print(trans1)
         # print(trans)
