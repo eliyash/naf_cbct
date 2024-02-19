@@ -39,17 +39,17 @@ class TIGREDataset(Dataset):
     """
     TIGRE dataset.
     """
-    def __init__(self, path, n_rays=1024, type="train", device="cuda"):    
+    def __init__(self, path, n_rays=1024, type="train", device="cuda"):
         super().__init__()
 
         with open(path, "rb") as handle:
             data = pickle.load(handle)
-        
+
         self.geo = ConeGeometry(data)
         self.type = type
         self.n_rays = n_rays
         self.near, self.far = self.get_near_far(self.geo)
-    
+
         if type == "train":
             self.projs = torch.tensor(data["train"]["projections"], dtype=torch.float32, device=device)
             angles = data["train"]["angles"]
@@ -70,7 +70,7 @@ class TIGREDataset(Dataset):
             self.n_samples = data["numVal"]
             self.image = torch.tensor(data["image"], dtype=torch.float32, device=device)
             self.voxels = torch.tensor(self.get_voxels(self.geo), dtype=torch.float32, device=device)
-        
+
     def __len__(self):
         return self.n_samples
 
@@ -99,7 +99,7 @@ class TIGREDataset(Dataset):
         """
         Get the voxels.
         """
-        n1, n2, n3 = geo.nVoxel 
+        n1, n2, n3 = geo.nVoxel
         s1, s2, s3 = geo.sVoxel / 2 - geo.dVoxel / 2
 
         xyz = np.meshgrid(np.linspace(-s1, s1, n1),
@@ -107,7 +107,7 @@ class TIGREDataset(Dataset):
                         np.linspace(-s3, s3, n3), indexing="ij")
         voxel = np.asarray(xyz).transpose([1, 2, 3, 0])
         return voxel
-    
+
     def get_rays(self, angles, geo: ConeGeometry, device):
         """
         Get rays given one angle and x-ray machine geometry.
@@ -116,7 +116,7 @@ class TIGREDataset(Dataset):
         W, H = geo.nDetector
         DSD = geo.DSD
         rays = []
-        
+
         for angle in angles:
             pose = torch.Tensor(self.angle2pose(geo.DSO, angle)).to(device)
             rays_o, rays_d = None, None
@@ -144,16 +144,16 @@ class TIGREDataset(Dataset):
                 # rays1 = plot_rays(rays_d.cpu().detach().numpy(), rays_o.cpu().detach().numpy(), 2)
                 # poseray = plot_camera_pose(pose.cpu().detach().numpy())
                 # o3d.visualization.draw_geometries([cube1, cube2, rays1, poseray])
-            
+
             else:
                 raise NotImplementedError("Unknown CT scanner type!")
             rays.append(torch.concat([rays_o, rays_d], dim=-1))
 
         return torch.stack(rays, dim=0)
 
-    def angle2pose(self, DSO, angle_z):
-        angle_x = -np.pi / 2
+    def angle2pose(self, DSO, angle_x):
         angle_y = np.pi / 2
+        angle_z = -np.pi / 2
         Rx = np.array([[1.0, 0.0, 0.0],
                        [0.0, np.cos(angle_x), -np.sin(angle_x)],
                        [0.0, np.sin(angle_x), np.cos(angle_x)]])
