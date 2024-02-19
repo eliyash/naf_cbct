@@ -51,11 +51,12 @@ class TIGREDataset(Dataset):
         self.near, self.far = self.get_near_far(self.geo)
     
         if type == "train":
-            self.projs = torch.tensor(data["train"]["projections"], dtype=torch.float32, device=device)
-            angles = data["train"]["angles"]
+            numTrain = 30
+            self.projs = torch.tensor(data["train"]["projections"][:numTrain], dtype=torch.float32, device=device)
+            angles = data["train"]["angles"][:numTrain]
             rays = self.get_rays(angles, self.geo, device)
             self.rays = torch.cat([rays, torch.ones_like(rays[...,:1])*self.near, torch.ones_like(rays[...,:1])*self.far], dim=-1)
-            self.n_samples = data["numTrain"]
+            self.n_samples = numTrain
             coords = torch.stack(torch.meshgrid(torch.linspace(0, self.geo.nDetector[1] - 1, self.geo.nDetector[1], device=device),
                                                 torch.linspace(0, self.geo.nDetector[0] - 1, self.geo.nDetector[0], device=device), indexing="ij"),
                                  -1)
@@ -63,11 +64,12 @@ class TIGREDataset(Dataset):
             self.image = torch.tensor(data["image"], dtype=torch.float32, device=device)
             self.voxels = torch.tensor(self.get_voxels(self.geo), dtype=torch.float32, device=device)
         elif type == "val":
-            self.projs = torch.tensor(data["val"]["projections"], dtype=torch.float32, device=device)
-            angles = data["val"]["angles"]
+            numEval = 30
+            self.projs = torch.tensor(data["val"]["projections"][:numEval], dtype=torch.float32, device=device)
+            angles = data["val"]["angles"][:numEval]
             rays = self.get_rays(angles, self.geo, device)
             self.rays = torch.cat([rays, torch.ones_like(rays[...,:1])*self.near, torch.ones_like(rays[...,:1])*self.far], dim=-1)
-            self.n_samples = data["numVal"]
+            self.n_samples = numEval
             self.image = torch.tensor(data["image"], dtype=torch.float32, device=device)
             self.voxels = torch.tensor(self.get_voxels(self.geo), dtype=torch.float32, device=device)
         
