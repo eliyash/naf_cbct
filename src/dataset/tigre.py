@@ -169,8 +169,8 @@ class TIGREDataset(Dataset):
         # Combined rotation matrix
         R = np.dot(np.dot(Rz, Ry), Rx)
 
-        # trans = np.dot(R, np.array([0, -DSO, 0]))
-        trans = np.array([DSO * np.cos(angle_z), DSO * np.sin(angle_z), 0])
+        trans_camera = np.array([0, 0, DSO])
+        trans = np.dot(R, trans_camera)
         # print(trans1)
         # print(trans)
         T = np.eye(4)
