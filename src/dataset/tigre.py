@@ -151,22 +151,30 @@ class TIGREDataset(Dataset):
 
         return torch.stack(rays, dim=0)
 
-    def angle2pose(self, DSO, angle):
-        phi1 = -np.pi / 2
-        R1 = np.array([[1.0, 0.0, 0.0],
-                    [0.0, np.cos(phi1), -np.sin(phi1)],
-                    [0.0, np.sin(phi1), np.cos(phi1)]])
-        phi2 = np.pi / 2
-        R2 = np.array([[np.cos(phi2), -np.sin(phi2), 0.0],
-                    [np.sin(phi2), np.cos(phi2), 0.0],
-                    [0.0, 0.0, 1.0]])
-        R3 = np.array([[np.cos(angle), -np.sin(angle), 0.0],
-                    [np.sin(angle), np.cos(angle), 0.0],
-                    [0.0, 0.0, 1.0]])
-        rot = np.dot(np.dot(R3, R2), R1)
-        trans = np.array([DSO * np.cos(angle), DSO * np.sin(angle), 0])
+    def angle2pose(self, DSO, angle_z):
+        angle_x = -np.pi / 2
+        angle_y = np.pi / 2
+        Rx = np.array([[1.0, 0.0, 0.0],
+                       [0.0, np.cos(angle_x), -np.sin(angle_x)],
+                       [0.0, np.sin(angle_x), np.cos(angle_x)]])
+
+        Ry = np.array([[np.cos(angle_y), 0.0, np.sin(angle_y)],
+                       [0.0, 1.0, 0.0],
+                       [-np.sin(angle_y), 0.0, np.cos(angle_y)]])
+
+        Rz = np.array([[np.cos(angle_z), -np.sin(angle_z), 0.0],
+                       [np.sin(angle_z), np.cos(angle_z), 0.0],
+                       [0.0, 0.0, 1.0]])
+
+        # Combined rotation matrix
+        R = np.dot(np.dot(Rz, Ry), Rx)
+
+        # trans = np.dot(R, np.array([0, -DSO, 0]))
+        trans = np.array([DSO * np.cos(angle_z), DSO * np.sin(angle_z), 0])
+        # print(trans1)
+        # print(trans)
         T = np.eye(4)
-        T[:-1, :-1] = rot
+        T[:-1, :-1] = R
         T[:-1, -1] = trans
         return T
 
@@ -182,3 +190,6 @@ class TIGREDataset(Dataset):
         near = np.max([0, geo.DSO - dist_max - tolerance])
         far = np.min([geo.DSO * 2, geo.DSO + dist_max + tolerance])
         return near, far
+
+
+TIGREDataset.angle2pose(None, 1000,  np.pi /2)
